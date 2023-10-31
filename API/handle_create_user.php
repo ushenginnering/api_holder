@@ -1,6 +1,5 @@
 <?php
 // Include the database connection file
-// Include the database connection
 include 'connect.php';
 include 'common_funtions.php';
 
@@ -13,12 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirmPassword = $_POST['confirm_password'];
     $status = $_POST['position'];
     $schoolName = $_POST['school_name'];
+
     if ($schoolName !== '') {
-    $schoolID = get_this_school_id_by_name($conn, $schoolName);
+        $schoolID = get_this_school_id_by_name($conn, $schoolName);
     } else {
         $schoolID = '';
     }
-
 
     // Validate the data
     if (empty($email) || empty($password) || empty($confirmPassword) || empty($status) || empty($username)) {
@@ -28,17 +27,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(400);
         echo json_encode(array("status" => false, "message" => "Password and Confirm Password do not match."));
     } else {
-        // Hash the password (you should use a more secure method)
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        // Check if the user already exists based on the provided email
+        $userExists = check_user_existence($conn, $email);
 
-        // Insert the user data into the database
-       $create_user = save_user($conn, $username, $email, '', $schoolID, $status, $signature, $school_password);
-        if ($create_user == "User data inserted successfully.<br>") {
-            http_response_code(201);
-            echo json_encode(array("status" => true,"message" => "User created successfully."));
+        if ($userExists) {
+            http_response_code(409); // HTTP 409 Conflict: Indicates a conflict with the current state of the server.
+            echo json_encode(array("status" => false, "message" => "User with this email already exists."));
         } else {
-            http_response_code(500);
-            echo json_encode(array("status" => false,"message" => "Error creating user: " . $conn->error));
+            // Hash the password (you should use a more secure method)
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+
+            // Insert the user data into the database
+            $create_user = save_user($conn, $username, $email, '', $schoolID, $status, $signature, $password);
+            
+            if ($create_user == "User data inserted successfully.<br>") {
+                http_response_code(201);
+                echo json_encode(array("status" => true,"message" => "User created successfully."));
+            } else {
+                http_response_code(500);
+                echo json_encode(array("status" => false,"message" => "Error creating user: " . $conn->error));
+            }
         }
     }
 } else {

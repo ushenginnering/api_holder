@@ -1,10 +1,11 @@
 <?php
-include "connect.php";
-include "common_funtions.php";
+// Include the database connection file
+include 'connect.php';
+include 'common_funtions.php';
 
 // Function to generate a random verification code
 
-function generateVerificationCode( $length = 6) {
+function generateVerificationCode( $length = 4) {
     return rand(pow(10, $length - 1), pow(10, $length) - 1);
 }
 // Check if the request is a POST request
@@ -18,14 +19,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(array("status" => false,"message" => "Email is required."));
     } else {
         // Check if the email exists in the database
-        $checkuserEmail =  checkusersEmail($conn,$email);
+        $checkuserEmail =   check_user_existence($conn, $email);
 
 
         if ($checkuserEmail == false) {
             http_response_code(500);
             echo json_encode(array("status" => false,"message" => "Error in SQL query: " . $conn->error));
         } else {
-            if ($result->num_rows === 1) {
+            
                 // Generate a random verification code
                 $code = generateVerificationCode();
 
@@ -46,10 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     http_response_code(500);
                     echo json_encode(array("status" => false,"message" => "Error storing verification code: " . $conn->error));
                 }
-            } else {
-                http_response_code(404);
-                echo json_encode(array("status" => false,"message" => "Email not found."));
-            }
+          
         }
     }
 } else {

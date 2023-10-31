@@ -1,4 +1,6 @@
 <?php
+
+ 
 // create database tables
 function create_tables($conn, $school_name){
     $school_name = str_replace(" ","_",$school_name);
@@ -37,7 +39,8 @@ function create_tables($conn, $school_name){
             school_name VARCHAR(100),
             capacity_ranges VARCHAR(255),
             referral_source VARCHAR(100),
-            desired_results TEXT,
+            desired_results TEXT, 
+            email  VARCHAR(100),
             submission_date DATETIME DEFAULT CURRENT_TIMESTAMP
         )',
         'plan_packages' =>  '(
@@ -533,12 +536,29 @@ function checkusersEmail($conn,$email,$password){
     }
     $result = mysqli_query($conn,$checkEmailSql);  
     if (mysqli_num_rows($result) > 0) {
-        return true;
+        return     $result ;
     }else{
         return false;
     }
 }
 
+function check_user_existence($conn, $email) {
+    // SQL query to check if a user with the provided email exists
+    $sql = "SELECT * FROM users WHERE email = ?";
+
+    // Using prepared statements to prevent SQL injection
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    // Check if there are any rows returned
+    if ($result->num_rows > 0) {
+        return true; // User with this email exists
+    } else {
+        return false; // User with this email doesn't exist
+    }
+}
 
 function updateOPTcode($conn,$code,$email){
     $updateVerificationCodeSql = "UPDATE users SET verification_code = '$code' WHERE email = '$email'";
@@ -549,18 +569,46 @@ function updateOPTcode($conn,$code,$email){
     }
 }
 
-    // Include the PHPMailer library
-    require 'PHPMailer/src/Exception.php';
-    require 'PHPMailer/src/PHPMailer.php';
-    require 'PHPMailer/src/SMTP.php';
 
-    use PHPMailer\PHPMailer\PHPMailer;
-    use PHPMailer\PHPMailer\Exception;
+// Function to get stored OTP from the users table for a given email
+function getStoredOTP($conn, $email) {
+    $sql = "SELECT verification_code FROM users WHERE email = ?"; // Assuming 'otp' is the column name storing the OTP
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        return $row['otp']; // Return the stored OTP
+    } else {
+        return null; // If no OTP is found for the email
+    }
+}
+
+
+function updatePassword($conn,$password,$email){
+    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+    $updateVerificationCodeSql = "UPDATE users SET password = '$hashedPassword' WHERE email = '$email'";
+    if (mysqli_query($conn,$updateVerificationCodeSql)) {
+        return true;
+    }else{
+        return false;
+    }
+}
+   // Include the PHPMailer library
+   require 'PHPMailer/src/Exception.php';
+   require 'PHPMailer/src/PHPMailer.php';
+   require 'PHPMailer/src/SMTP.php';
+
+   use PHPMailer\PHPMailer\PHPMailer;
+   use PHPMailer\PHPMailer\Exception;
 function sendPaymentConfirmationEmail($conn, $code,$email) {
 
     $body = "Hello,\n\n";
-    $body .= "Your confrimation code is $code.\n";
-    $body .= "Keep all password safe.\n\n";
+    $body .= "Click the link to confim your account: https://rapidsuite.ng/Pages/OTP.html?opt=$code&email=$email \n";
+    $body .= "Keep all your password safe.\n\n";
     $body .= "Best Regards,\n";
     $body .= "rapidsuite.ng\n\n";
 
@@ -569,7 +617,7 @@ function sendPaymentConfirmationEmail($conn, $code,$email) {
 
     try {
         // Server settings
-        $mail->SMTPDebug = 2; // Enable verbose debug output
+        $mail->SMTPDebug = 0; // Disable verbose debug output
         $mail->isSMTP();
         $mail->Host = 'smtp.gmail.com'; // Your SMTP server
         $mail->SMTPAuth = true;
@@ -596,8 +644,7 @@ function sendPaymentConfirmationEmail($conn, $code,$email) {
 
 
 }
-
-
 ?>
+
 
 

@@ -11,34 +11,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate the data
     if (empty($email) || empty($password)) {
         http_response_code(400);
-        echo json_encode(array("message" => "Email and password are required."));
+        echo json_encode(array("status" => false, "message" => "Email and password are required."));
     } else {
         // Retrieve user data from the database
-        $checkemailstatus = checkusersEmail($conn,$email,$password);
+        $checkemailstatus = checkusersEmail($conn, $email, $password);
 
-        if ($checkemailstatus == true) {
+        if ($checkemailstatus === false) {
             http_response_code(500);
-            echo json_encode(array("message" => "Error in SQL query: " . $conn->error));
+            echo json_encode(array("status" => false, "message" => "Error in SQL query: " . $conn->error));
+        
         } else {
-            if ($result->num_rows === 1) {
+            // Assuming $result is the result of a query
+            if ($result->num_rows === 1) { 
                 $user = $result->fetch_assoc();
                 // Verify the password
                 if (password_verify($password, $user['password'])) {
                     http_response_code(200);
-                    echo json_encode(array("message" => "Login successful"));
+                    echo json_encode(array("status" => true, "message" => "Login successful"));
                     // You can also include additional user data in the response if needed.
                 } else {
                     http_response_code(401);
-                    echo json_encode(array("message" => "Invalid email or password"));
+                    echo json_encode(array("status" => false, "message" => "Invalid email or password"));
                 }
             } else {
                 http_response_code(401);
-                echo json_encode(array("message" => "Invalid email or password"));
+                echo json_encode(array("status" => false, "message" => "Invalid email or password"));
             }
         }
     }
 } else {
     http_response_code(405);
-    echo json_encode(array("message" => "Method Not Allowed"));
+    echo json_encode(array("status" => false, "message" => "Method Not Allowed"));
 }
 ?>
